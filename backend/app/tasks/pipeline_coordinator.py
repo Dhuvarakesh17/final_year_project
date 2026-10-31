@@ -224,9 +224,11 @@ def run_video_pipeline(job_id: str):
                     tensor = disease_classifier.transform(pil_crop).unsqueeze(0).to(disease_classifier.device)
                     cam_map = gradcam_explainer.generate_heatmap(tensor, class_idx=cls_res["predicted_class_id"])
                     gradcam_bgr = gradcam_explainer.overlay_heatmap(leaf_crop, cam_map)
-                    gradcam_filename = f"{crop_sample_id}_gradcam.jpg"
+                    gradcam_filename = f"leaf_{crop_sample_id}_gradcam.jpg"
                     gradcam_path = settings.EVIDENCE_DIR / gradcam_filename
                     cv2.imwrite(str(gradcam_path), gradcam_bgr)
+                    # Also save legacy un-prefixed alias
+                    cv2.imwrite(str(settings.EVIDENCE_DIR / f"{crop_sample_id}_gradcam.jpg"), gradcam_bgr)
                 except Exception as ex:
                     print(f"Notice: GradCAM skipped on frame {f_meta['frame_number']}: {ex}")
 

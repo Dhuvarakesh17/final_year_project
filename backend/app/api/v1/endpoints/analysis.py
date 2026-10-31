@@ -11,6 +11,8 @@ from backend.app.models.entities import (
 from backend.app.schemas.schemas import (
     JobCreateRequest, JobStatusResponse, LeafFindingResponse, WeedFindingResponse, AnalysisSummaryResponse, BoundingBox
 )
+from backend.app.core.config import settings
+from backend.app.services.health_assessment.treatment_advisory import TreatmentAdvisoryEngine
 from backend.app.tasks.pipeline_coordinator import run_video_pipeline
 
 router = APIRouter()
@@ -141,6 +143,8 @@ def get_analysis_summary(analysis_id: str, db: Session = Depends(get_db)):
             "status": yield_rec.status,
         }
 
+    avg_lesion_pct = float(sum(l.lesion_area_pct for l in leaves) / len(leaves)) if leaves else 0.0
+
     return AnalysisSummaryResponse(
         analysis_id=analysis_id,
         total_frames_analyzed=len(frames),
@@ -153,10 +157,10 @@ def get_analysis_summary(analysis_id: str, db: Session = Depends(get_db)):
         predominant_disease=predominant,
         yield_prediction=yield_dict,
         treatment_advisory=TreatmentAdvisoryEngine.get_prescription(
-            disease_name=predominant or "Tomato_healthy",
-            lesion_pct=float(np.mean([f.lesion_area_pct for f in findings])) if findings else 0.0,
+            disease_name=predominant if predominant != "None" else "Tomato_healthy",
+            lesion_pct=round(avg_lesion_pct, 2),
             health_score=mean_health
-        ) if predominant else None
+        ) if predominant != "None" else None
     )
 
 @router.get("/{analysis_id}/findings/leaves", response_model=List[LeafFindingResponse])
@@ -186,6 +190,10 @@ def get_leaf_findings(
             crop_url = f"/static/evidence/{crop_name}"
             # Check for corresponding gradcam file
             gradcam_name = crop_name.replace("_crop.jpg", "_gradcam.jpg")
+            if not (settings.EVIDENCE_DIR / gradcam_name).exists():
+                alt_name = gradcam_name.replace("leaf_", "", 1)
+                if (settings.EVIDENCE_DIR / alt_name).exists():
+                    gradcam_name = alt_name
             gradcam_url = f"/static/evidence/{gradcam_name}"
 
         if f.mask_overlay_path:
