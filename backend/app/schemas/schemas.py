@@ -85,6 +85,7 @@ class LeafFindingResponse(BaseModel):
     bbox: BoundingBox
     crop_image_url: Optional[str] = None
     mask_overlay_url: Optional[str] = None
+    gradcam_heatmap_url: Optional[str] = None
     timestamp_sec: float
 
     class Config:
@@ -113,6 +114,7 @@ class AnalysisSummaryResponse(BaseModel):
     mean_health_score: float
     predominant_disease: Optional[str]
     yield_prediction: Optional[Dict[str, Any]] = None
+    treatment_advisory: Optional[Dict[str, Any]] = None
 
 # --- Yield Prediction Schemas ---
 class YieldPredictionRequest(BaseModel):

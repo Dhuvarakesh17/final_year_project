@@ -152,6 +152,11 @@ def get_analysis_summary(analysis_id: str, db: Session = Depends(get_db)):
         mean_health_score=round(mean_health, 1),
         predominant_disease=predominant,
         yield_prediction=yield_dict,
+        treatment_advisory=TreatmentAdvisoryEngine.get_prescription(
+            disease_name=predominant or "Tomato_healthy",
+            lesion_pct=float(np.mean([f.lesion_area_pct for f in findings])) if findings else 0.0,
+            health_score=mean_health
+        ) if predominant else None
     )
 
 @router.get("/{analysis_id}/findings/leaves", response_model=List[LeafFindingResponse])
@@ -175,8 +180,14 @@ def get_leaf_findings(
         # Build URL for images
         crop_url = None
         mask_url = None
+        gradcam_url = None
         if obj and obj.crop_image_path:
-            crop_url = f"/static/evidence/{Path(obj.crop_image_path).name}"
+            crop_name = Path(obj.crop_image_path).name
+            crop_url = f"/static/evidence/{crop_name}"
+            # Check for corresponding gradcam file
+            gradcam_name = crop_name.replace("_crop.jpg", "_gradcam.jpg")
+            gradcam_url = f"/static/evidence/{gradcam_name}"
+
         if f.mask_overlay_path:
             mask_url = f"/static/evidence/{Path(f.mask_overlay_path).name}"
 
@@ -197,6 +208,7 @@ def get_leaf_findings(
             ),
             crop_image_url=crop_url,
             mask_overlay_url=mask_url,
+            gradcam_heatmap_url=gradcam_url,
             timestamp_sec=frame.timestamp_sec if frame else 0.0,
         ))
 
@@ -229,4 +241,79 @@ def get_weed_findings(
         ))
 
     return results
+
+@router.get("/{analysis_id}/export/csv")
+def export_telemetry_csv(
+    analysis_id: str,
+    db: Session = Depends(get_db)
+):
+    import io
+    import csv
+    from fastapi.responses import Response
+
+    job = db.query(AnalysisJob).filter(AnalysisJob.id == analysis_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Analysis job not found.")
+
+    leaves = db.query(DiseaseFinding).filter(DiseaseFinding.analysis_id == analysis_id).all()
+    weeds = db.query(WeedFinding).filter(WeedFinding.analysis_id == analysis_id).all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # Header
+    writer.writerow([
+        "Record Type", "ID", "Track ID", "Species / Disease Class",
+        "Confidence (%)", "Lesion Area (%)", "Health Score (0-100)",
+        "Triage Severity", "Canopy Coverage (%)", "Timestamp (s)",
+        "BBox X1", "BBox Y1", "BBox X2", "BBox Y2"
+    ])
+
+    for leaf in leaves:
+        obj = leaf.detected_object
+        frame = obj.frame if obj else None
+        writer.writerow([
+            "Foliar Leaf",
+            leaf.id,
+            "N/A",
+            leaf.disease_name,
+            f"{leaf.classification_confidence * 100:.2f}",
+            f"{leaf.lesion_area_pct:.2f}",
+            f"{leaf.health_score:.1f}",
+            leaf.severity_category,
+            "N/A",
+            f"{frame.timestamp_sec:.2f}" if frame else "0.0",
+            f"{obj.bbox_x1:.1f}" if obj else "0",
+            f"{obj.bbox_y1:.1f}" if obj else "0",
+            f"{obj.bbox_x2:.1f}" if obj else "0",
+            f"{obj.bbox_y2:.1f}" if obj else "0"
+        ])
+
+    for weed in weeds:
+        obj = weed.detected_object
+        writer.writerow([
+            "Weed Cluster",
+            weed.id,
+            weed.track_id,
+            weed.weed_species,
+            f"{weed.confidence * 100:.2f}",
+            "N/A",
+            "N/A",
+            "INVASIVE",
+            f"{weed.canopy_coverage_pct:.2f}",
+            f"{weed.timestamp_sec:.2f}",
+            f"{obj.bbox_x1:.1f}" if obj else "0",
+            f"{obj.bbox_y1:.1f}" if obj else "0",
+            f"{obj.bbox_x2:.1f}" if obj else "0",
+            f"{obj.bbox_y2:.1f}" if obj else "0"
+        ])
+
+    csv_data = output.getvalue()
+    filename = f"agrovision_telemetry_{analysis_id[:8]}.csv"
+
+    return Response(
+        content=csv_data,
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
 

@@ -29,7 +29,9 @@ from backend.app.services.video_processing.frame_extractor import VideoFrameExtr
 from backend.app.services.ml_inference.weed_detector import WeedDetectorTracker
 from backend.app.services.ml_inference.disease_classifier import LeafDiseaseClassifier
 from backend.app.services.ml_inference.lesion_segmenter import FoliarLesionSegmenter
+from backend.app.services.ml_inference.gradcam import GradCAMExplainer
 from backend.app.services.health_assessment.health_engine import CropHealthEngine
+from backend.app.services.health_assessment.treatment_advisory import TreatmentAdvisoryEngine
 from backend.app.services.yield_prediction.yield_engine import CropYieldEngine
 from backend.app.services.pdf_report.report_generator import AgroReportGenerator
 
@@ -99,6 +101,7 @@ def run_video_pipeline(job_id: str):
         weed_tracker = WeedDetectorTracker()
         disease_classifier = LeafDiseaseClassifier()
         lesion_segmenter = FoliarLesionSegmenter()
+        gradcam_explainer = GradCAMExplainer(disease_classifier.model, device=disease_classifier.device)
 
         # Step 1: Extract and Filter Frames
         job.current_stage = "FRAME_EXTRACTION_AND_FILTERING"
@@ -215,6 +218,17 @@ def run_video_pipeline(job_id: str):
                 from PIL import Image
                 pil_crop = Image.fromarray(rgb_crop)
                 cls_res = disease_classifier.predict_leaf(pil_crop)
+
+                # 2.5 Explainable AI: Grad-CAM Saliency Map
+                try:
+                    tensor = disease_classifier.transform(pil_crop).unsqueeze(0).to(disease_classifier.device)
+                    cam_map = gradcam_explainer.generate_heatmap(tensor, class_idx=cls_res["predicted_class_id"])
+                    gradcam_bgr = gradcam_explainer.overlay_heatmap(leaf_crop, cam_map)
+                    gradcam_filename = f"{crop_sample_id}_gradcam.jpg"
+                    gradcam_path = settings.EVIDENCE_DIR / gradcam_filename
+                    cv2.imwrite(str(gradcam_path), gradcam_bgr)
+                except Exception as ex:
+                    print(f"Notice: GradCAM skipped on frame {f_meta['frame_number']}: {ex}")
 
                 # 3. Health Scoring Engine
                 health_res = CropHealthEngine.evaluate_leaf_health(
@@ -348,6 +362,11 @@ def run_video_pipeline(job_id: str):
             "diseased_leaves_count": len([l for l in all_leaf_findings if l["severity_category"] != "healthy"]),
             "mean_health_score": mean_health,
             "predominant_disease": all_leaf_findings[0]["disease_name"] if all_leaf_findings else "None Detected",
+            "treatment_advisory": TreatmentAdvisoryEngine.get_prescription(
+                disease_name=all_leaf_findings[0]["disease_name"] if all_leaf_findings else "Tomato_healthy",
+                lesion_pct=float(np.mean([l.get("lesion_area_pct", 0) for l in all_leaf_findings])) if all_leaf_findings else 0.0,
+                health_score=mean_health
+            ) if all_leaf_findings else None
         }
 
         generator = AgroReportGenerator(str(pdf_path))

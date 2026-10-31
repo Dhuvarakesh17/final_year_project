@@ -122,6 +122,8 @@ class LeafDiseaseClassifier:
             "full_class": top_class_name,
             "crop_name": crop_name,
             "disease_name": condition_name,
+            "class_idx": int(top_class_idx),
+            "predicted_class_id": int(top_class_idx),
             "confidence": round(top_confidence, 4),
             "is_healthy": "healthy" in top_class_name.lower(),
             "top_5": top_5,

@@ -54,10 +54,13 @@ An enterprise-grade, multi-model agricultural intelligence platform developed as
   * **mAP@50:** `95.7%` | **mAP@50-95:** `94.8%` | **Weed Recall:** `98.2%` | **Inference:** `0.7 ms/image`.
 * **Foliar Pathology Classification:** Fine-tuned **EfficientNet-B0** on 16,504 PlantVillage Solanaceae images with post-hoc Temperature Scaling calibration ($T = 1.4972$).
   * **Validation Accuracy:** `99.73%` | **Validation Loss:** `0.0097`.
+* **Explainable AI (Grad-CAM Saliency Maps):** Gradient-weighted Class Activation Mapping implemented directly on the final convolutional layer of EfficientNet-B0 (`model.features[-1]`), generating thermal attention heatmaps that explain which foliar pixel patterns drove the diagnostic prediction.
 * **Pixel-Exact Lesion Segmentation:** Color-space transform + Otsu thresholding calculating necrotic area ratio:
   $$\text{Lesion Ratio (\%)} = \left(\frac{\text{Lesion Pixels}}{\text{Leaf Pixels}}\right) \times 100$$
+* **Actionable Treatment & Spray Advisory Engine:** Rule-based agronomic prescription matrix matching detected pathogens with chemical controls (active ingredients, dosages, application intervals), organic/biological controls (*Bacillus subtilis*, *Trichoderma*), and calculating variable-rate spot-spray cost reductions (saving up to 45–60% over blanket applications).
 * **Calibrated Agronomic Yield Engine:** Multivariate regression coupled with strict input gating (soil N/P/K, pH, temperature, precipitation, field area) generating 90% confidence intervals $[\hat{Y}_{0.05}, \hat{Y}_{0.95}]$.
-* **Traceable Audit Reports:** Automated compilation of 12-section A4 audit documents via Python ReportLab, complete with full-color annotated keyframes, bounding box telemetry, lesion overlays, and agronomic remedy matrices.
+* **Single-Leaf Real-Time Diagnostic Sandbox:** Dedicated sub-50ms inference endpoint (`POST /api/v1/inference/single-leaf`) allowing drag-and-drop of single leaf photos with 3-way visual inspection (Original Crop vs. Lesion Mask vs. Grad-CAM XAI Heatmap).
+* **Traceable Audit Reports & CSV Export:** Automated compilation of 12-section A4 audit documents via Python ReportLab, accompanied by one-click raw telemetry CSV exports for agronomists and researchers.
 
 ---
 
@@ -159,3 +162,4 @@ Navigate to `http://localhost:3000` in your browser.
 
 ## 📄 License
 This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+
