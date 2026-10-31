@@ -1,0 +1,35 @@
+--extra-index-url https://download.pytorch.org/whl/cu121
+
+# Core Deep Learning & Computer Vision (CUDA GPU-accelerated)
+torch>=2.2.0
+torchvision>=0.17.0
+ultralytics>=8.1.0
+opencv-python-headless>=4.9.0
+pillow>=10.2.0
+
+# Machine Learning & Tabular Analytics
+numpy>=1.26.0
+pandas>=2.2.0
+scikit-learn>=1.4.0
+xgboost>=2.0.0
+
+# Backend API & Asynchronous Services
+fastapi>=0.110.0
+uvicorn[standard]>=0.28.0
+python-multipart>=0.0.9
+pydantic>=2.6.0
+pydantic-settings>=2.2.0
+aiofiles>=23.2.1
+python-dotenv>=1.0.1
+
+# Database & ORM
+sqlalchemy>=2.0.28
+alembic>=1.13.1
+
+# Evidence & Report Generation
+reportlab>=4.1.0
+matplotlib>=3.8.3
+
+# Utilities
+tqdm>=4.66.2
+requests>=2.31.0

@@ -1,0 +1,98 @@
+{
+  "architecture": "EfficientNet-B0",
+  "dataset": "PlantVillage-15-Classes",
+  "num_classes": 15,
+  "classes": [
+    "Pepper__bell___Bacterial_spot",
+    "Pepper__bell___healthy",
+    "Potato___Early_blight",
+    "Potato___Late_blight",
+    "Potato___healthy",
+    "Tomato_Bacterial_spot",
+    "Tomato_Early_blight",
+    "Tomato_Late_blight",
+    "Tomato_Leaf_Mold",
+    "Tomato_Septoria_leaf_spot",
+    "Tomato_Spider_mites_Two_spotted_spider_mite",
+    "Tomato__Target_Spot",
+    "Tomato__Tomato_YellowLeaf__Curl_Virus",
+    "Tomato__Tomato_mosaic_virus",
+    "Tomato_healthy"
+  ],
+  "best_val_accuracy": 99.73,
+  "temperature_scaling": 1.4972,
+  "total_training_epochs": 10,
+  "training_time_sec": 1254.1,
+  "history": [
+    {
+      "epoch": 1,
+      "train_loss": 0.27376470233390937,
+      "train_acc": 0.9211100339311682,
+      "val_loss": 0.1066583415917705,
+      "val_acc": 0.9649250120948234
+    },
+    {
+      "epoch": 2,
+      "train_loss": 0.08963971241579088,
+      "train_acc": 0.9720673776054289,
+      "val_loss": 0.08964268725045949,
+      "val_acc": 0.9731494920174165
+    },
+    {
+      "epoch": 3,
+      "train_loss": 0.0544932630460238,
+      "train_acc": 0.982489093553078,
+      "val_loss": 0.05751450098540168,
+      "val_acc": 0.9804063860667634
+    },
+    {
+      "epoch": 4,
+      "train_loss": 0.03527111686058288,
+      "train_acc": 0.9884876393601552,
+      "val_loss": 0.021235832608234292,
+      "val_acc": 0.9954039671020803
+    },
+    {
+      "epoch": 5,
+      "train_loss": 0.024253095455478536,
+      "train_acc": 0.9916383906931653,
+      "val_loss": 0.028990087905832455,
+      "val_acc": 0.9912917271407837
+    },
+    {
+      "epoch": 6,
+      "train_loss": 0.017065758959101753,
+      "train_acc": 0.9948497333979641,
+      "val_loss": 0.03092398418614958,
+      "val_acc": 0.9915336236090954
+    },
+    {
+      "epoch": 7,
+      "train_loss": 0.008145838665230389,
+      "train_acc": 0.997515753756665,
+      "val_loss": 0.014750864523835712,
+      "val_acc": 0.9954039671020803
+    },
+    {
+      "epoch": 8,
+      "train_loss": 0.006755761524087748,
+      "train_acc": 0.9981822588463403,
+      "val_loss": 0.013703629818534627,
+      "val_acc": 0.9966134494436382
+    },
+    {
+      "epoch": 9,
+      "train_loss": 0.0036034700336585734,
+      "train_acc": 0.9986669898206495,
+      "val_loss": 0.009750134325015517,
+      "val_acc": 0.9973391388485728
+    },
+    {
+      "epoch": 10,
+      "train_loss": 0.002442354254211661,
+      "train_acc": 0.9993940862821135,
+      "val_loss": 0.009650716762471537,
+      "val_acc": 0.9973391388485728
+    }
+  ]
+}
