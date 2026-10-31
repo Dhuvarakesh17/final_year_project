@@ -100,25 +100,29 @@ async def diagnose_single_leaf(file: UploadFile = File(...)):
         health_score=health_res["health_score"]
     )
 
+    triage_str = health_res.get("severity_category", "MODERATE").upper()
+    mask_file = Path(seg_res["mask_overlay_path"]).name if seg_res.get("mask_overlay_path") else crop_filename
+
     return {
         "sample_id": sample_id,
         "disease": {
             "name": cls_res["full_class"],
-            "species": cls_res["crop_species"],
-            "pathology": cls_res["pathology"],
+            "species": cls_res.get("crop_name", "Tomato"),
+            "pathology": cls_res.get("disease_name", "Foliar Pathology"),
             "confidence": round(cls_res["confidence"], 4),
             "temperature_calibrated": True,
-            "top_probabilities": cls_res.get("top_3_probabilities", [])
+            "top_probabilities": cls_res.get("top_5", [])
         },
         "health": {
             "health_score": health_res["health_score"],
-            "triage_level": health_res["triage_level"],
-            "is_healthy": health_res["is_healthy"],
+            "triage_level": triage_str,
+            "severity_category": health_res.get("severity_category", "moderate"),
+            "is_healthy": cls_res.get("is_healthy", False),
             "lesion_area_pct": seg_res["lesion_area_pct"]
         },
         "visual_evidence": {
             "original_crop_url": f"/static/evidence/{crop_filename}",
-            "lesion_mask_url": f"/static/evidence/{Path(seg_res['mask_image_path']).name}",
+            "lesion_mask_url": f"/static/evidence/{mask_file}",
             "gradcam_heatmap_url": f"/static/evidence/{gradcam_filename}"
         },
         "advisory": advisory
