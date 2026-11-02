@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Sprout, 
   Upload, 
@@ -67,6 +67,75 @@ export default function App() {
 
   // Zoom Modal for Evidence Inspection
   const [zoomFinding, setZoomFinding] = useState<any | null>(null);
+
+  // Dynamically compute the 4x4 spatial zoning map from real CV findings
+  const zoningBlocks = useMemo(() => {
+    const cols = ['A', 'B', 'C', 'D'];
+    const rows = ['1', '2', '3', '4'];
+    
+    // Determine max flight time across frames
+    const maxTime = Math.max(
+      ...leafFindings.map((f: any) => f.timestamp_sec || 0),
+      ...weedFindings.map((w: any) => w.timestamp_sec || 0),
+      1.0
+    );
+
+    const blocks: {
+      id: string;
+      status: 'SPRAY SPOT' | 'WEED ZONE' | 'HEALTHY';
+      details: string;
+    }[] = [];
+
+    rows.forEach((row, rIdx) => {
+      const rowTimeStart = (rIdx / 4) * maxTime;
+      const rowTimeEnd = ((rIdx + 1) / 4) * maxTime;
+
+      cols.forEach((col, cIdx) => {
+        const quadrantId = `${col}${row}`;
+        const colXStart = (cIdx / 4) * 1920;
+        const colXEnd = ((cIdx + 1) / 4) * 1920;
+
+        // Check for foliar disease findings in this spatio-temporal cell
+        const cellLeaves = leafFindings.filter((l: any) => {
+          const t = l.timestamp_sec || 0;
+          const x = l.bbox ? (l.bbox.x1 + l.bbox.x2) / 2 : 960;
+          return t >= rowTimeStart && t <= rowTimeEnd && x >= colXStart && x <= colXEnd;
+        });
+
+        // Check for weed detections in this cell
+        const cellWeeds = weedFindings.filter((w: any) => {
+          const t = w.timestamp_sec || 0;
+          const x = w.bbox ? (w.bbox.x1 + w.bbox.x2) / 2 : 960;
+          return t >= rowTimeStart && t <= rowTimeEnd && x >= colXStart && x <= colXEnd;
+        });
+
+        const diseased = cellLeaves.find((l: any) => l.severity_category !== 'healthy');
+        const weedHeavy = cellWeeds.find((w: any) => (w.canopy_coverage_pct || 0) > 30);
+
+        if (diseased) {
+          blocks.push({
+            id: quadrantId,
+            status: 'SPRAY SPOT',
+            details: `${diseased.crop_name} ${diseased.disease_name.replace(/_/g, ' ')} (${diseased.lesion_area_pct}%)`,
+          });
+        } else if (weedHeavy) {
+          blocks.push({
+            id: quadrantId,
+            status: 'WEED ZONE',
+            details: `${weedHeavy.weed_species} (${weedHeavy.canopy_coverage_pct.toFixed(0)}%)`,
+          });
+        } else {
+          blocks.push({
+            id: quadrantId,
+            status: 'HEALTHY',
+            details: 'Nominal canopy (<2% damage)',
+          });
+        }
+      });
+    });
+
+    return blocks;
+  }, [leafFindings, weedFindings]);
 
   // Initial Load: Fetch health and automatically load latest completed job (if available)
   useEffect(() => {
@@ -955,29 +1024,29 @@ export default function App() {
                   </div>
 
                   <div className="grid grid-cols-4 gap-2.5 bg-gray-50 dark:bg-gray-950 p-4 rounded-xl border border-gray-200 dark:border-gray-800">
-                    {['A1', 'A2', 'A3', 'A4', 'B1', 'B2', 'B3', 'B4', 'C1', 'C2', 'C3', 'C4', 'D1', 'D2', 'D3', 'D4'].map((quadrant, idx) => {
-                      const isHighRisk = (idx === 5 || idx === 6 || idx === 9); // Simulated infected blocks
-                      const isModerate = (idx === 1 || idx === 10 || idx === 14);
-                      return (
-                        <div 
-                          key={quadrant}
-                          className={`p-3 rounded-lg border text-center transition-all ${
-                            isHighRisk
-                              ? 'bg-red-50 dark:bg-red-950/40 border-red-300 dark:border-red-800'
-                              : isModerate
-                              ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800'
-                              : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800'
-                          }`}
-                        >
-                          <span className="text-xs font-mono font-bold block text-gray-700 dark:text-gray-300">{quadrant}</span>
-                          <span className={`text-[10px] font-bold block mt-1 ${
-                            isHighRisk ? 'text-red-600' : isModerate ? 'text-amber-600' : 'text-emerald-600'
-                          }`}>
-                            {isHighRisk ? 'SPRAY SPOT' : isModerate ? 'WEED ZONE' : 'HEALTHY'}
-                          </span>
-                        </div>
-                      );
-                    })}
+                    {zoningBlocks.map((block) => (
+                      <div 
+                        key={block.id}
+                        title={block.details}
+                        className={`p-3 rounded-lg border text-center transition-all ${
+                          block.status === 'SPRAY SPOT'
+                            ? 'bg-red-50 dark:bg-red-950/40 border-red-300 dark:border-red-800'
+                            : block.status === 'WEED ZONE'
+                            ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800'
+                            : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800'
+                        }`}
+                      >
+                        <span className="text-xs font-mono font-bold block text-gray-700 dark:text-gray-300">{block.id}</span>
+                        <span className={`text-[10px] font-bold block mt-1 ${
+                          block.status === 'SPRAY SPOT' ? 'text-red-600' : block.status === 'WEED ZONE' ? 'text-amber-600' : 'text-emerald-600'
+                        }`}>
+                          {block.status}
+                        </span>
+                        <span className="text-[9px] text-gray-400 block truncate mt-0.5" title={block.details}>
+                          {block.details}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </>
